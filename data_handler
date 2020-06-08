@@ -7,42 +7,28 @@ from keras.applications.densenet import preprocess_input
 from keras.preprocessing import image
 from tqdm import tqdm
 
-def read_abnormal_data(file, tags_mode):
-    cases_captions = {}
-    cases_images = {}
-    cases_tags = {}
-    data = pd.read_csv(file, sep="\t")
-    for index, row in data.iterrows():
-        # Check if caption is not none
-        if not pd.isna(row.captions):
-            if len(row.images.split(";")) == 2:
-                if tags_mode == "tags":
-                    if row.tags != "No Finding":
-                        cases_captions[row.reports] = row.captions
-                        cases_images[row.reports] = row.images
-                        cases_tags[row.reports] = row[tags_mode]
-                else:
-                    if row.manual_tags != "normal" and row.manual_tags != "no indexing":
-                        cases_captions[row.reports] = row.captions
-                        cases_images[row.reports] = row.images
-                        cases_tags[row.reports] = row[tags_mode]
 
-    return cases_captions, cases_images, cases_tags
-    
-def read_all_data(file, tags_mode):
-    cases_captions = {}
-    cases_images = {}
-    cases_tags = {}
-    data = pd.read_csv(file, sep="\t")
-    for index, row in data.iterrows():
-        # Check if caption is none
-        if not pd.isna(row.captions):
-            if len(row.images.split(";")) == 2:
-                cases_captions[row.reports] = row.captions
-                cases_images[row.reports] = row.images
-                cases_tags[row.reports] = row[tags_mode]
-                        
-    return cases_captions, cases_images, cases_tags
+def load_image(image_path):
+    img = image.load_img(image_path, target_size=(224, 224))
+    x = image.img_to_array(img)
+    x = preprocess_input(x)
+    img.close()
+    return x
+
+def encode_images(cases_images, images_path):
+    x1_data, x2_data = [], []
+
+    for case in cases_images:
+        images = cases_images[case].split(";")
+
+        x1 = load_image(os.path.join(images_path, images[0]))
+        x2 = load_image(os.path.join(images_path, images[1]))
+
+
+        x1_data.append(x1)
+        x2_data.append(x2)
+
+    return [np.array(x1_data), np.array(x2_data)]
     
 def extract_img_embeddings(model, images_path, data):
     case_vectors = {}
