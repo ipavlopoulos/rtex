@@ -1,0 +1,58 @@
+def read_abnormal_data(file, tags_mode):
+    cases_captions = {}
+    cases_images = {}
+    cases_tags = {}
+    data = pd.read_csv(file, sep="\t")
+    for index, row in data.iterrows():
+        # Check if caption is not none
+        if not pd.isna(row.captions):
+            if len(row.images.split(";")) == 2:
+                if tags_mode == "tags":
+                    if row.tags != "No Finding":
+                        cases_captions[row.reports] = row.captions
+                        cases_images[row.reports] = row.images
+                        cases_tags[row.reports] = row[tags_mode]
+                else:
+                    if row.manual_tags != "normal" and row.manual_tags != "no indexing":
+                        cases_captions[row.reports] = row.captions
+                        cases_images[row.reports] = row.images
+                        cases_tags[row.reports] = row[tags_mode]
+
+    return cases_captions, cases_images, cases_tags
+    
+def read_all_data(file, tags_mode):
+    cases_captions = {}
+    cases_images = {}
+    cases_tags = {}
+    data = pd.read_csv(file, sep="\t")
+    for index, row in data.iterrows():
+        # Check if caption is none
+        if not pd.isna(row.captions):
+            if len(row.images.split(";")) == 2:
+                cases_captions[row.reports] = row.captions
+                cases_images[row.reports] = row.images
+                cases_tags[row.reports] = row[tags_mode]
+                        
+    return cases_captions, cases_images, cases_tags
+    
+def extract_img_embeddings(model, images_path, data):
+    case_vectors = {}
+    for report in tqdm(data):
+        images = data[report].split(";")
+        encoded = []
+        for i in images:
+            # Encode image
+            image_path = os.path.join(images_path, i)
+            img = image.load_img(image_path, target_size=(224, 224))
+            x = image.img_to_array(img)
+            x = preprocess_input(x)
+            encoded.append(x)
+            img.close()
+
+        # Predict
+        x1 = np.expand_dims(encoded[0], axis=0)
+        x2 = np.expand_dims(encoded[1], axis=0)
+        vector = model.predict([x1,x2])
+
+        case_vectors[report] = vector.transpose().flatten()
+    return case_vectors
